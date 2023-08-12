@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 public class Pokemon implements Comparable<Pokemon> {
 
@@ -62,6 +63,8 @@ public class Pokemon implements Comparable<Pokemon> {
 
     public int callRate;
 
+    private int timesPicked;
+
     public ExpCurve growthCurve;
 
     public List<Evolution> evolutionsFrom = new ArrayList<>();
@@ -84,7 +87,7 @@ public class Pokemon implements Comparable<Pokemon> {
         Collections.shuffle(shuffledStatsOrder, random);
         applyShuffledOrderToStats();
     }
-    
+
     public void copyShuffledStatsUpEvolution(Pokemon evolvesFrom) {
         // If stats were already shuffled once, un-shuffle them
         shuffledStatsOrder = Arrays.asList(
@@ -209,8 +212,15 @@ public class Pokemon implements Comparable<Pokemon> {
         }
     }
 
+    public int bstForPowerLevelsWithTimesPicked() {
+        int bst = bstForPowerLevels();
+        double factor = Math.pow(1.33, getTimesPicked());
+
+        return (int) Math.round(bst * factor);
+    }
+
     public double getAttackSpecialAttackRatio() {
-        return (double)attack / ((double)attack + (double)spatk);
+        return (double) attack / ((double) attack + (double) spatk);
     }
 
     public int getBaseNumber() {
@@ -320,6 +330,65 @@ public class Pokemon implements Comparable<Pokemon> {
 
     public int getCosmeticFormNumber(int num) {
         return realCosmeticFormNumbers.isEmpty() ? num : realCosmeticFormNumbers.get(num);
+    }
+
+    public Pokemon getBasePokemon() {
+        if (this.baseForme != null)
+            return this.baseForme.getBasePokemon();
+        if (this.evolutionsTo.size() == 0)
+            return this;
+        else return this.evolutionsTo.stream().findFirst().get().from.getBasePokemon();
+    }
+
+    public List<Pokemon> getFullFamily() {
+        Pokemon basePoke = this.getBasePokemon();
+
+        List<Pokemon> evolutions = new ArrayList<>();
+        evolutions.add(basePoke);
+
+        if (basePoke.evolutionsFrom.size() == 0)
+            return evolutions;
+
+        List<Pokemon> nonFinalPokemon = Collections.singletonList(basePoke);
+
+        do {
+            List<Pokemon> newEvolutions = new ArrayList<>();
+
+            for (Pokemon poke : nonFinalPokemon) {
+                newEvolutions.addAll(poke.getEvolutions());
+            }
+            evolutions.addAll(newEvolutions);
+
+            nonFinalPokemon = newEvolutions.stream().filter(p -> p.evolutionsFrom.size() > 0).collect(Collectors.toList());
+
+        } while (nonFinalPokemon.size() != 0);
+
+        return evolutions.stream().distinct().collect(Collectors.toList());
+    }
+
+    public List<Pokemon> getEvolutions() {
+        List<Pokemon> evolutions = new ArrayList<>();
+        for (Evolution evo : this.evolutionsFrom) {
+            evolutions.add(evo.to);
+        }
+        return evolutions;
+    }
+
+    public List<Pokemon> getMegaEvolutions() {
+        List<Pokemon> megaEvolutions = new ArrayList<>();
+        for (MegaEvolution evo : this.megaEvolutionsFrom) {
+            megaEvolutions.add(evo.to);
+        }
+        return megaEvolutions;
+
+    }
+
+    public int getTimesPicked() {
+        return this.getBasePokemon().timesPicked;
+    }
+
+    public void setTimesPicked(int value) {
+        this.getBasePokemon().timesPicked = value;
     }
 
 }
